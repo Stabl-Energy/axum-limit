@@ -116,6 +116,8 @@ pub trait Key: Eq + Hash + Send + Sync {
 /// Implements a token bucket for rate limiting.
 /// This struct manages the tokens for rate limiting, providing methods to acquire and refill tokens based on time elapsed.
 struct TokenBucket {
+    tokens_per: usize,
+
     tokens: usize,
     last_refill_time: Instant,
     refill_duration: Duration,
@@ -124,8 +126,10 @@ struct TokenBucket {
 impl TokenBucket {
     /// Constructs a new `TokenBucket` with a specific number of tokens and a refill period.
     fn new(tokens: impl Into<usize>, per: impl Into<u64>) -> Self {
+        let tokens = tokens.into();
         Self {
-            tokens: tokens.into(),
+            tokens_per: tokens,
+            tokens,
             last_refill_time: Instant::now(),
             refill_duration: Duration::from_millis(per.into()),
         }
@@ -149,16 +153,8 @@ impl TokenBucket {
 
         // Calculate the elapsed time in milliseconds
         if elapsed >= self.refill_duration {
-            let elapsed_millis = elapsed.as_millis() as u64; // Convert elapsed time to milliseconds
-            let refill_duration_millis = self.refill_duration.as_millis() as u64; // Convert refill duration to milliseconds
-
-            // Calculate the number of new tokens to add
-            let new_tokens = (elapsed_millis / refill_duration_millis) as usize;
-            self.tokens += new_tokens;
-
-            // Reset the last refill time to avoid under-refilling tokens
-            self.last_refill_time =
-                now - Duration::from_millis(elapsed_millis % refill_duration_millis);
+            self.tokens = self.tokens_per;
+            self.last_refill_time = now;
         }
     }
 }
