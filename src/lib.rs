@@ -10,6 +10,7 @@ use http::request::Parts;
 use http::StatusCode;
 use std::error::Error;
 use std::fmt::Display;
+use std::future::Future;
 use std::hash::Hash;
 use std::ops::{Deref, DerefMut};
 use std::sync::Arc;
@@ -196,7 +197,6 @@ where
     }
 }
 
-#[async_trait::async_trait]
 impl<const C: usize, const P: u64, K, S> FromRequestParts<S> for Limit<C, P, K>
 where
     LimitState<K>: FromRef<S>,
@@ -206,18 +206,23 @@ where
 {
     type Rejection = LimitRejection<<<K as Key>::Extractor as FromRequestParts<S>>::Rejection>;
 
-    async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
-        let key_extractor = match K::Extractor::from_request_parts(parts, state).await {
-            Ok(ke) => ke,
-            Err(rejection) => return Err(LimitRejection::KeyExtractionFailure(rejection)),
-        };
+    fn from_request_parts(
+        parts: &mut Parts,
+        state: &S,
+    ) -> impl Future<Output = Result<Self, Self::Rejection>> {
+        async move {
+            let key_extractor = match K::Extractor::from_request_parts(parts, state).await {
+                Ok(ke) => ke,
+                Err(rejection) => return Err(LimitRejection::KeyExtractionFailure(rejection)),
+            };
 
-        let limit_state: LimitState<K> = FromRef::from_ref(state);
-        let key = K::from_extractor(&key_extractor);
-        if limit_state.check(key, C, P) {
-            Ok(Self(key_extractor))
-        } else {
-            Err(LimitRejection::RateLimitExceeded)
+            let limit_state: LimitState<K> = FromRef::from_ref(state);
+            let key = K::from_extractor(&key_extractor);
+            if limit_state.check(key, C, P) {
+                Ok(Self(key_extractor))
+            } else {
+                Err(LimitRejection::RateLimitExceeded)
+            }
         }
     }
 }
@@ -274,6 +279,7 @@ mod tests {
     async fn limit() {
         const TEST_ROUTE0: &str = "/limit0";
         const TEST_ROUTE1: &str = "/limit1";
+
         async fn handler0(Limit(_uri): Limit<1, 1, Uri>) -> impl IntoResponse {}
 
         async fn handler1(Limit(_uri): Limit<3, 1, Uri>) -> impl IntoResponse {}

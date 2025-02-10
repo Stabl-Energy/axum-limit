@@ -21,17 +21,17 @@ categories = [
 edition = "2021"
 
 [dependencies]
-async-trait = "0.1.80"
-axum-core = "0.4.3"
-dashmap = "6.0.1"
-http = "1.1.0"
+async-trait = "0.1"
+axum-core = "0.5"
+dashmap = "6"
+http = "1"
 
 
 [dev-dependencies]
-anyhow = "1.0.82"
-axum = "0.7.5"
-futures = "0.3.30"
-axum-test = "15.6.0"
-tokio = { version = "1.37.0", features = ["macros", "rt-multi-thread"] }
-serde = { version = "1.0.198", features = ["derive"] }
-http = "1.1.0"
+anyhow = "1.0.95"
+axum = { version = "0.8.1", features = ["macros"] }
+futures = "0.3.31"
+axum-test = "17.2.0"
+tokio = { version = "1.43.0", features = ["macros", "rt-multi-thread"] }
+serde = { version = "1.0.217", features = ["derive"] }
+http = "1.2.0"
